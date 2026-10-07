@@ -10,8 +10,14 @@ module.exports = async (req, res) => {
     return;
   }
   try {
-    const r = await fetch(`https://bntpool.com/api/miner/${address}`, { headers: { 'user-agent': 'bnt-tracker' } });
+    const h = { headers: { 'user-agent': 'bnt-tracker' } };
+    const [r, b] = await Promise.all([
+      fetch(`https://bntpool.com/api/miner/${address}`, h),
+      fetch(`https://bntpool.com/api/miner/${address}/balance?include_pending_estimate=true`, h).catch(() => null),
+    ]);
     const body = await r.json();
+    // pending = credits from pool blocks still waiting for their 60 confirmations
+    try { if (b && b.ok) { const bal = await b.json(); body.balance = bal.balance || null; body.pending_estimate = bal.pending_estimate || null; } } catch (e) {}
     res.setHeader('cache-control', 's-maxage=20, stale-while-revalidate=60');
     res.status(r.ok ? 200 : r.status).json(body);
   } catch (e) {

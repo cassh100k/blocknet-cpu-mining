@@ -68,6 +68,7 @@
     <div class="tile"><div class="k">Workers</div><div class="v" id="workers">–</div><div class="s" id="lastShare">–</div></div>
     <div class="tile"><div class="k">Shares accepted</div><div class="v" id="acc">–</div><div class="s" id="rej">–</div></div>
     <div class="tile"><div class="k">Mining since</div><div class="v" id="since">–</div><div class="s" id="sinceDate">–</div></div>
+    <div class="tile"><div class="k">Pending (unconfirmed)</div><div class="v" id="pending">–</div><div class="s" id="pendingS">–</div></div>
     <div class="tile"><div class="k">Paid out</div><div class="v" id="paid">–</div><div class="s" id="paidN">–</div></div>
     <div class="tile"><div class="k">Blocks found</div><div class="v" id="blocks">–</div><div class="s">by your workers</div></div>
   </div>
@@ -190,6 +191,12 @@
     $('paid').textContent = fmtN(paidTot, 4) + ' BNT';
     $('paidN').textContent = payouts.length + ' payout' + (payouts.length === 1 ? '' : 's');
     $('blocks').textContent = fmtN(d.blocks_found || 0);
+    var pe = d.pending_estimate || {}, pb = pe.blocks || [], bal = d.balance || {};
+    var pend = (Number(pe.estimated_pending) || 0) / ATOMIC, ready = (Number(bal.pending_confirmed) || 0) / ATOMIC;
+    $('pending').textContent = fmtN(pend, 4) + ' BNT';
+    var soonest = pb.reduce(function (m, x) { return Math.min(m, x.confirmations_remaining == null ? 1e9 : x.confirmations_remaining); }, 1e9);
+    $('pendingS').textContent = pb.length ? (pb.length + ' blocks · next confirms in ~' + soonest + ' blocks (~' + Math.max(1, Math.round(soonest * 5 / 60 * 10) / 10) + 'h)' + (ready ? ' · ' + fmtN(ready, 4) + ' confirmed' : '')) : 'credited when the pool finds blocks';
+    if (!payouts.length) $('paidN').textContent = 'first payout once 0.1 BNT is confirmed';
 
     $('workerRows').innerHTML = workers.length ? workers.map(function (w) {
       var fresh = w.last_share_at && (Date.now() / 1000 - w.last_share_at) < 900;
