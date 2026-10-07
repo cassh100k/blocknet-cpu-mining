@@ -1,0 +1,25 @@
+# systemd unit: mines in the background at idle priority so the rest of the
+# machine always comes first. Edit the three CHANGE_ME values, then:
+#   sudo cp bnt-miner.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now bnt-miner
+[Unit]
+Description=Blocknet (BNT) CPU miner (seine) at idle priority
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# CHANGE_ME: the folder where install.sh put the seine binary
+WorkingDirectory=/opt/bnt
+# CHANGE_ME: your own wallet address, a worker name, and threads (about 2 GB RAM per thread)
+ExecStart=/opt/bnt/seine --pool-url stratum+tcp://bntpool.com:3333 --address YOUR_BNT_ADDRESS --pool-worker my-rig --backend cpu --threads 2 --data-dir /opt/bnt/seine-data
+Nice=19
+CPUSchedulingPolicy=idle
+IOSchedulingClass=idle
+# CHANGE_ME: cap to the cores and memory you are willing to give it
+CPUQuota=200%
+MemoryMax=5G
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BNT Mining Tracker</title>
+<meta name="description" content="Live stats for a Blocknet (BNT) miner on bntpool.com">
+<style>
+  :root {
+    --bg: #f6f7f4; --card: #ffffff; --ink: #121512; --dim: #5f6a60; --line: #e3e7e1;
+    --accent: #3f8f2e; --good: #2f8a3a; --bad: #c43d3d; --warn: #b7791f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b0e0b; --card: #131813; --ink: #e8efe7; --dim: #8fa08e; --line: #223022;
+      --accent: #9be36d; --good: #6fd47a; --bad: #ff6b6b; --warn: #f2b84b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 22px; letter-spacing: -0.3px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--dim); margin: 28px 0 10px; font-weight: 600; }
+  .addr { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--dim); word-break: break-all; margin-top: 4px; }
+  .status { font-size: 13px; color: var(--dim); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--dim); }
+  .dot.live { background: var(--good); box-shadow: 0 0 0 4px color-mix(in srgb, var(--good) 20%, transparent); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .tile .k { font-size: 12px; color: var(--dim); }
+  .tile .v { font-size: 24px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .tile .s { font-size: 12px; color: var(--dim); margin-top: 2px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--dim); font-weight: 600; font-size: 12px; }
+  tr:last-child td { border-bottom: 0; }
+  .ok { color: var(--good); } .no { color: var(--bad); } .muted { color: var(--dim); }
+  svg { display: block; width: 100%; height: 120px; }
+  .err { background: color-mix(in srgb, var(--bad) 12%, var(--card)); border: 1px solid var(--bad); border-radius: 12px; padding: 12px 16px; margin-top: 16px; display: none; }
+  form { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  input { flex: 1; min-width: 220px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font: 13px ui-monospace, monospace; }
+  button { padding: 9px 14px; border-radius: 8px; border: 0; background: var(--accent); color: #081008; font-weight: 650; cursor: pointer; }
+  footer { margin-top: 36px; font-size: 12px; color: var(--dim); }
+  footer a { color: var(--dim); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>BNT Mining Tracker</h1>
+      <div class="addr" id="addr">loading…</div>
+    </div>
+    <div class="status"><span class="dot" id="dot"></span><span id="updated">connecting…</span></div>
+  </header>
+
+  <div class="err" id="err"></div>
+  <form id="addrForm" style="display:none">
+    <input id="addrInput" placeholder="Paste your Blocknet address" autocomplete="off">
+    <button type="submit">Track</button>
+  </form>
+
+  <h2>Your miner</h2>
+  <div class="grid">
+    <div class="tile"><div class="k">Hashrate</div><div class="v" id="hr">–</div><div class="s" id="hrNet">–</div></div>
+    <div class="tile"><div class="k">Workers</div><div class="v" id="workers">–</div><div class="s" id="lastShare">–</div></div>
+    <div class="tile"><div class="k">Shares accepted</div><div class="v" id="acc">–</div><div class="s" id="rej">–</div></div>
+    <div class="tile"><div class="k">Mining since</div><div class="v" id="since">–</div><div class="s" id="sinceDate">–</div></div>
+    <div class="tile"><div class="k">Paid out</div><div class="v" id="paid">–</div><div class="s" id="paidN">–</div></div>
+    <div class="tile"><div class="k">Blocks found</div><div class="v" id="blocks">–</div><div class="s">by your workers</div></div>
+  </div>
+
+  <h2>Hashrate history (this browser)</h2>
+  <div class="card"><svg id="chart" viewBox="0 0 600 120" preserveAspectRatio="none" role="img" aria-label="Hashrate over time"></svg>
+    <div class="s muted" id="chartNote" style="font-size:12px;margin-top:6px">Builds up while this page is open (and across visits). Nothing is sent anywhere.</div></div>
+
+  <h2>Workers</h2>
+  <div class="card"><table><thead><tr><th>Worker</th><th>Hashrate</th><th>Accepted</th><th>Rejected</th><th>Last share</th><th>Miner</th></tr></thead><tbody id="workerRows"><tr><td class="muted" colspan="6">–</td></tr></tbody></table></div>
+
+  <h2>Payouts</h2>
+  <div class="card"><table><thead><tr><th>When</th><th>Amount</th><th>Tx</th></tr></thead><tbody id="payRows"><tr><td class="muted" colspan="3">No payouts yet (min payout 0.1 BNT, 60 confirmations)</td></tr></tbody></table></div>
+
+  <h2>Recent shares</h2>
+  <div class="card"><table><thead><tr><th>When</th><th>Worker</th><th>Difficulty</th><th>Status</th></tr></thead><tbody id="shareRows"><tr><td class="muted" colspan="4">–</td></tr></tbody></table></div>
+
+  <h2>Pool &amp; network</h2>
+  <div class="grid">
+    <div class="tile"><div class="k">Network hashrate</div><div class="v" id="netHr">–</div><div class="s" id="height">–</div></div>
+    <div class="tile"><div class="k">Pool hashrate</div><div class="v" id="poolHr">–</div><div class="s" id="poolShare">–</div></div>
+    <div class="tile"><div class="k">Pool miners</div><div class="v" id="poolMiners">–</div><div class="s" id="poolBlocks">–</div></div>
+    <div class="tile"><div class="k">Pool paid to miners</div><div class="v" id="poolPaid">–</div><div class="s">all time</div></div>
+  </div>
+
+  <footer>
+    Data from <a href="https://bntpool.com" rel="noopener">bntpool.com</a>, refreshed every 30s. BNT has no market today, so coins have no price.
+    Setup guide: see the GitHub repo this page was deployed from.
+  </footer>
+</main>
+<script>
+(function () {
+  var ATOMIC = 1e8; // BNT base units (pool totals are reported in atomic units)
+  var qs = new URLSearchParams(location.search);
+  var qAddr = (qs.get('address') || '').trim();
+  var $ = function (id) { return document.getElementById(id); };
+  var fmtH = function (h) { h = Number(h) || 0; return h >= 1000 ? (h / 1000).toFixed(2) + ' kH/s' : h.toFixed(2) + ' H/s'; };
+  var fmtN = function (n, d) { return Number(n).toLocaleString('en-US', { maximumFractionDigits: d == null ? 0 : d }); };
+  var ago = function (sec) {
+    if (!sec) return '–';
+    var s = Math.max(0, Date.now() / 1000 - sec);
+    if (s < 90) return Math.round(s) + 's ago';
+    if (s < 5400) return Math.round(s / 60) + 'm ago';
+    if (s < 172800) return Math.round(s / 3600) + 'h ago';
+    return Math.round(s / 86400) + 'd ago';
+  };
+  var dur = function (sec) {
+    var s = Math.max(0, Date.now() / 1000 - sec), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+    return d ? d + 'd ' + h + 'h' : h ? h + 'h ' + m + 'm' : m + 'm';
+  };
+  var ts = function (v) { return v && typeof v === 'object' ? v.secs_since_epoch : v; };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var bnt = function (v) { var n = Number(v) || 0; return n > 1e6 ? n / ATOMIC : n; };
+
+  var HKEY = 'bnt-tracker-history';
+  var hist = []; try { hist = JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch (e) { hist = []; }
+  var netHr = 0;
+
+  function showErr(msg, askAddr) {
+    $('err').textContent = msg; $('err').style.display = 'block';
+    $('addrForm').style.display = askAddr ? 'flex' : 'none';
+  }
+  $('addrForm').addEventListener('submit', function (e) {
+    e.preventDefault(); var v = $('addrInput').value.trim();
+    if (v) location.search = '?address=' + encodeURIComponent(v);
+  });
+
+  function drawChart() {
+    var svg = $('chart'); var pts = hist.slice(-240);
+    if (pts.length < 2) { svg.innerHTML = '<text x="300" y="64" text-anchor="middle" fill="currentColor" opacity="0.5" font-size="13">collecting data…</text>'; return; }
+    var max = Math.max.apply(null, pts.map(function (p) { return p[1]; })) || 1;
+    var t0 = pts[0][0], t1 = pts[pts.length - 1][0] || t0 + 1;
+    var d = pts.map(function (p, i) { var x = (p[0] - t0) / (t1 - t0 || 1) * 596 + 2, y = 112 - p[1] / max * 100; return (i ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1); }).join(' ');
+    svg.innerHTML = '<path d="' + d + ' L598,118 L2,118 Z" fill="var(--accent)" opacity="0.12"/><path d="' + d + '" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>' +
+      '<text x="6" y="14" fill="currentColor" opacity="0.6" font-size="11">peak ' + esc(fmtH(max)) + '</text>';
+  }
+
+  async function loadPool() {
+    try {
+      var d = await (await fetch('/api/pool')).json();
+      var p = d.pool || {}, c = d.chain || {};
+      netHr = Number(c.network_hashrate) || 0;
+      $('netHr').textContent = fmtH(netHr);
+      $('height').textContent = c.current_job_height ? 'height ' + fmtN(c.current_job_height) : '–';
+      $('poolHr').textContent = fmtH(p.hashrate);
+      $('poolShare').textContent = netHr ? (p.hashrate / netHr * 100).toFixed(1) + '% of network' : '–';
+      $('poolMiners').textContent = fmtN(p.miners || 0);
+      $('poolBlocks').textContent = fmtN(p.blocks_found || 0) + ' blocks found';
+      $('poolPaid').textContent = fmtN(bnt(p.paid_to_miners_total)) + ' BNT';
+    } catch (e) { /* pool totals are optional */ }
+  }
+
+  async function loadMiner() {
+    var url = '/api/miner' + (qAddr ? '?address=' + encodeURIComponent(qAddr) : '');
+    var r, d;
+    try { r = await fetch(url); d = await r.json(); } catch (e) { showErr('Could not reach the tracker API. Retrying…'); return; }
+    if (!r.ok) {
+      var noAddr = r.status === 400;
+      showErr(d.error || ('Pool returned ' + r.status), noAddr);
+      if (r.status === 404) showErr('The pool has no data for this address yet. It appears after your first accepted share.', true);
+      $('dot').className = 'dot'; return;
+    }
+    $('err').style.display = 'none'; $('addrForm').style.display = 'none';
+    var workers = d.workers || [], payouts = d.payouts || [], shares = d.shares || [];
+    var hr = Number(d.hashrate) || 0;
+    var last = workers.reduce(function (m, w) { return Math.max(m, w.last_share_at || 0); }, 0);
+    var live = last && (Date.now() / 1000 - last) < 900;
+
+    $('hr').textContent = fmtH(hr);
+    $('hrNet').textContent = netHr ? (hr / netHr * 100).toFixed(3) + '% of network' : '–';
+    $('workers').textContent = workers.length;
+    $('lastShare').textContent = 'last share ' + ago(last);
+    $('acc').textContent = fmtN(d.total_accepted || 0);
+    var rejTot = d.total_rejected || 0, acc = d.total_accepted || 0;
+    $('rej').innerHTML = rejTot ? '<span class="no">' + fmtN(rejTot) + ' rejected (' + (rejTot / (acc + rejTot) * 100).toFixed(1) + '%)</span>' : '<span class="ok">0 rejected</span>';
+    var since = ts(d.mining_since);
+    $('since').textContent = since ? dur(since) : '–';
+    $('sinceDate').textContent = since ? new Date(since * 1000).toLocaleString() : '–';
+    var paidTot = payouts.reduce(function (s, p) { return s + bnt(p.amount); }, 0);
+    $('paid').textContent = fmtN(paidTot, 4) + ' BNT';
+    $('paidN').textContent = payouts.length + ' payout' + (payouts.length === 1 ? '' : 's');
+    $('blocks').textContent = fmtN(d.blocks_found || 0);
+
+    $('workerRows').innerHTML = workers.length ? workers.map(function (w) {
+      var fresh = w.last_share_at && (Date.now() / 1000 - w.last_share_at) < 900;
+      return '<tr><td>' + esc(w.worker) + '</td><td>' + esc(fmtH(w.hashrate)) + '</td><td class="ok">' + fmtN(w.accepted || 0) + '</td><td class="' + (w.rejected ? 'no' : 'muted') + '">' + fmtN(w.rejected || 0) +
+        '</td><td class="' + (fresh ? '' : 'no') + '">' + esc(ago(w.last_share_at)) + '</td><td class="muted">' + esc((w.miner_version || '') + (w.version_status && w.version_status !== 'current' ? ' (' + w.version_status + ')' : '')) + '</td></tr>';
+    }).join('') : '<tr><td class="muted" colspan="6">No active workers</td></tr>';
+
+    if (payouts.length) $('payRows').innerHTML = payouts.slice().reverse().slice(0, 50).map(function (p) {
+      var t = ts(p.created_at || p.time || p.timestamp);
+      var tx = p.tx_hash || p.txid || p.tx || '';
+      return '<tr><td>' + (t ? new Date(t * 1000).toLocaleString() : '–') + '</td><td>' + fmtN(bnt(p.amount), 6) + ' BNT</td><td class="muted">' + esc(tx ? tx.slice(0, 12) + '…' : '–') + '</td></tr>';
+    }).join('');
+
+    $('shareRows').innerHTML = shares.length ? shares.slice(0, 25).map(function (s) {
+      var t = ts(s.created_at);
+      return '<tr><td>' + esc(ago(t)) + '</td><td>' + esc(s.worker) + '</td><td>' + fmtN(s.difficulty || 0) + '</td><td class="' + (s.status === 'verified' ? 'ok' : 'muted') + '">' + esc(s.status || '') + '</td></tr>';
+    }).join('') : '<tr><td class="muted" colspan="4">No shares yet</td></tr>';
+
+    $('dot').className = 'dot' + (live ? ' live' : '');
+    $('updated').textContent = (live ? 'mining' : 'idle') + ' · updated ' + new Date().toLocaleTimeString();
+    $('addr').textContent = qAddr || 'address set in project settings';
+
+    hist.push([Math.round(Date.now() / 1000), hr]);
+    if (hist.length > 2000) hist = hist.slice(-2000);
+    try { localStorage.setItem(HKEY, JSON.stringify(hist)); } catch (e) {}
+    drawChart();
+  }
+
+  async function tick() { await loadPool(); await loadMiner(); }
+  drawChart(); tick(); setInterval(tick, 30000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# never commit wallets, seeds, passwords or miner state
+*.wallet.dat
+*seed*
+*SEED*
+*password*
+*.key
+seine-data/
+.env
+.env.*
+.vercel
+node_modules/
