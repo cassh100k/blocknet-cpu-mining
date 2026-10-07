@@ -18,6 +18,9 @@ module.exports = async (req, res) => {
     const body = await r.json();
     // pending = credits from pool blocks still waiting for their 60 confirmations
     try { if (b && b.ok) { const bal = await b.json(); body.balance = bal.balance || null; body.pending_estimate = bal.pending_estimate || null; } } catch (e) {}
+    // If the address came from your private BNT_ADDRESS setting, don't echo it
+    // back to the public: anyone could otherwise read it from /api/miner.
+    if (!(req.query && req.query.address)) { delete body.address; if (body.balance) delete body.balance.address; }
     res.setHeader('cache-control', 's-maxage=20, stale-while-revalidate=60');
     res.status(r.ok ? 200 : r.status).json(body);
   } catch (e) {

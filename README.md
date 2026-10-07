@@ -100,14 +100,49 @@ skip it on a machine that runs other things.
 2. In Vercel: **Add New → Project → import your fork**. No build settings needed.
 3. In **Settings → Environment Variables**, add `BNT_ADDRESS` = your Blocknet address, then redeploy.
 
-Your page shows hashrate, workers, accepted/rejected shares, payouts, recent shares, your share of the
-network, and pool totals, refreshing every 30 seconds. The address stays in your Vercel settings, not
+Your page shows hashrate, workers, accepted/rejected shares, **pending (unconfirmed) balance and when the
+next block confirms**, payouts, recent shares, your share of the network, and pool totals, refreshing every
+30 seconds. The address stays in your Vercel settings, not
 in your code, and the page does not display it. You can also track any address without deploying
 anything: open your deployment with `?address=THE_ADDRESS`.
 
 How it works: two tiny serverless functions (`api/miner.js`, `api/pool.js`) relay bntpool.com's public
 API (the pool does not allow direct browser calls). Nothing is stored. The hashrate chart is kept
 only in your own browser.
+
+## Understanding your earnings (why "paid" stays at 0 at first)
+
+This catches everyone, so here is how payment actually works on bntpool.com:
+
+1. **Shares.** Your miner keeps sending "shares" (proof it is working). Accepted shares are good;
+   rejected shares mean something is wrong (old miner version, unstable machine).
+2. **Pending credit.** Each time the pool finds a block (every few minutes, since it has most of the
+   network's hashrate), it credits you based on your shares in the **last 6 hours** (PPLNS). This
+   shows as **pending**.
+3. **Confirmations.** A block's credit only becomes payable after **60 more blocks** are mined on top of
+   it, roughly 5 hours at about 5 minutes per block.
+4. **Payout.** Once at least **0.1 BNT** of your credit is confirmed, the pool sends it to your wallet.
+
+So on a fresh setup expect: shares within a minute, pending credit within the first blocks, and the
+**first real payout after roughly 5 to 6 hours**. Your earnings ramp up for the first 6 hours as your
+shares fill the PPLNS window. The tracker page shows all three numbers: pending, confirmed, paid.
+
+You can check the same thing straight from the pool:
+
+```bash
+curl -s "https://bntpool.com/api/miner/YOUR_BNT_ADDRESS/balance?include_pending_estimate=true"
+```
+
+### Troubleshooting
+
+| Symptom | Likely cause / fix |
+|---|---|
+| `login accepted` never appears | wrong address format, or port 3333 blocked by your firewall/VPS provider |
+| Miner exits right after start | not enough RAM for the thread count: lower `--threads` (2 GB per thread) |
+| Rejected shares climbing | update `seine` to the latest release; check the machine is stable (no overheating) |
+| Tracker says "no data for this address" | it appears after your first accepted share; double-check the address |
+| Pending grows but paid stays 0 | normal for the first ~5 to 6 hours (see above) |
+| The machine feels slow | the service runs at idle priority, but RAM is still used: reduce threads |
 
 ## Pool facts (bntpool.com, as published by the pool)
 
