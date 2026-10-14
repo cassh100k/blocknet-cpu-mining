@@ -187,16 +187,19 @@
     var since = ts(d.mining_since);
     $('since').textContent = since ? dur(since) : '–';
     $('sinceDate').textContent = since ? new Date(since * 1000).toLocaleString() : '–';
-    var paidTot = payouts.reduce(function (s, p) { return s + bnt(p.amount); }, 0);
+    var bal = d.balance || {};
+    // authoritative cumulative paid. The payouts[] array the pool returns is only
+    // the RECENT few, so summing it under-reports the real total - use balance.paid.
+    var paidTot = (Number(bal.paid) || 0) / ATOMIC;
     $('paid').textContent = fmtN(paidTot, 4) + ' BNT';
-    $('paidN').textContent = payouts.length + ' payout' + (payouts.length === 1 ? '' : 's');
+    $('paidN').textContent = paidTot > 0 ? 'cumulative, in wallet' : (payouts.length + ' payouts');
     $('blocks').textContent = fmtN(d.blocks_found || 0);
-    var pe = d.pending_estimate || {}, pb = pe.blocks || [], bal = d.balance || {};
-    var pend = (Number(pe.estimated_pending) || 0) / ATOMIC, ready = (Number(bal.pending_confirmed) || 0) / ATOMIC;
-    $('pending').textContent = fmtN(pend, 4) + ' BNT';
+    var pe = d.pending_estimate || {}, pb = pe.blocks || [];
+    var pend = (Number(pe.estimated_pending) || 0) / ATOMIC, ready = ((Number(bal.pending_confirmed) || 0) + (Number(bal.pending_queued) || 0)) / ATOMIC;
+    $('pending').textContent = fmtN(pend + ready, 4) + ' BNT';
     var soonest = pb.reduce(function (m, x) { return Math.min(m, x.confirmations_remaining == null ? 1e9 : x.confirmations_remaining); }, 1e9);
     $('pendingS').textContent = pb.length ? (pb.length + ' blocks · next confirms in ~' + soonest + ' blocks (~' + Math.max(1, Math.round(soonest * 5 / 60 * 10) / 10) + 'h)' + (ready ? ' · ' + fmtN(ready, 4) + ' confirmed' : '')) : 'credited when the pool finds blocks';
-    if (!payouts.length) $('paidN').textContent = 'first payout once 0.1 BNT is confirmed';
+    if (!paidTot && !payouts.length) $('paidN').textContent = 'first payout once 0.1 BNT is confirmed';
 
     $('workerRows').innerHTML = workers.length ? workers.map(function (w) {
       var fresh = w.last_share_at && (Date.now() / 1000 - w.last_share_at) < 900;
