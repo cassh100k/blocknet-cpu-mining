@@ -4,9 +4,11 @@
 const ADDR_RE = /^[A-Za-z0-9]{40,140}$/;
 
 module.exports = async (req, res) => {
-  const address = String((req.query && req.query.address) || process.env.BNT_ADDRESS || '').trim();
+  // Per-visitor only: the address MUST come from ?address=. No BNT_ADDRESS env
+  // fallback, so the public tracker never exposes the author's miner stats.
+  const address = String((req.query && req.query.address) || '').trim();
   if (!ADDR_RE.test(address)) {
-    res.status(400).json({ error: 'Set BNT_ADDRESS in your Vercel project, or open the page with ?address=YOUR_ADDRESS' });
+    res.status(400).json({ error: 'Open the page with ?address=YOUR_BLOCKNET_ADDRESS (or paste it in the box).' });
     return;
   }
   try {

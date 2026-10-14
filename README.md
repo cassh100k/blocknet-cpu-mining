@@ -97,14 +97,14 @@ skip it on a machine that runs other things.
 ## Step 5: deploy your own tracker page (Vercel)
 
 1. **Fork** this repo.
-2. In Vercel: **Add New → Project → import your fork**. No build settings needed.
-3. In **Settings → Environment Variables**, add `BNT_ADDRESS` = your Blocknet address, then redeploy.
+2. In Vercel: **Add New → Project → import your fork**. No build settings needed. No env vars needed.
 
-Your page shows hashrate, workers, accepted/rejected shares, **pending (unconfirmed) balance and when the
-next block confirms**, payouts, recent shares, your share of the network, and pool totals, refreshing every
-30 seconds. The address stays in your Vercel settings, not
-in your code, and the page does not display it. You can also track any address without deploying
-anything: open your deployment with `?address=THE_ADDRESS`.
+The tracker is **per-visitor** and private by design: the page shows **no miner until you give it an
+address**. Enter your Blocknet address in the box on the page (or open it with
+`?address=YOUR_BLOCKNET_ADDRESS`) and it shows hashrate, workers, accepted/rejected shares, **pending
+balance and when the next block confirms**, payouts, recent shares, your share of the network, and pool
+totals, refreshing every 30 seconds. Nothing is stored, and the public URL never exposes anyone's stats
+by default — so you can share the link freely without leaking your own numbers.
 
 How it works: two tiny serverless functions (`api/miner.js`, `api/pool.js`) relay bntpool.com's public
 API (the pool does not allow direct browser calls). Nothing is stored. The hashrate chart is kept
