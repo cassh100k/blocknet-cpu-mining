@@ -3,7 +3,7 @@
 # GitHub releases and refuses to continue unless both match the published
 # SHA-256 checksums. Linux x86_64. Run as a normal user in an empty folder.
 set -euo pipefail
-BLOCKNET_VER="${BLOCKNET_VER:-v1.0.5}"
+BLOCKNET_VER="${BLOCKNET_VER:-v1.1.0}"
 SEINE_VER="${SEINE_VER:-v0.2.15}"
 
 fetch() { curl -fsSL -o "$2" "$1"; }
