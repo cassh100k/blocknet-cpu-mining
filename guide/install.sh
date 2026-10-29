@@ -4,7 +4,7 @@
 # SHA-256 checksums. Linux x86_64. Run as a normal user in an empty folder.
 set -euo pipefail
 BLOCKNET_VER="${BLOCKNET_VER:-v1.1.0}"
-SEINE_VER="${SEINE_VER:-v0.2.15}"
+SEINE_VER="${SEINE_VER:-v0.2.45}"
 
 fetch() { curl -fsSL -o "$2" "$1"; }
 check() { # file, sums-file, name-in-sums

@@ -45,8 +45,8 @@ The wallet lives inside a local Blocknet node ("core"). Create it once:
 
 ```bash
 cd ~/bnt
-./blocknet/blocknet install v0.20.0      # downloads the core; the manager verifies it
-./blocknet/blocknet use v0.20.0 mainnet
+./blocknet/blocknet install v0.23.0      # downloads the core; the manager verifies it
+./blocknet/blocknet use v0.23.0 mainnet   # older cores (v0.20.x) may not follow the current chain
 ./blocknet/blocknet start mainnet
 ./blocknet/blocknet attach mainnet
 > load            # choose "Create a new wallet", pick a name and a strong password
@@ -68,7 +68,7 @@ Start it again only when you want to check your balance or send coins.
 
 ```bash
 ./seine --pool-url stratum+tcp://bntpool.com:3333 --address YOUR_BNT_ADDRESS \
-        --pool-worker my-rig --backend cpu --threads 2
+        --pool-worker my-rig --backend cpu --threads 2 --telemetry off
 ```
 
 Within a minute you should see `login accepted`, then `SHARE accepted`. Stop it with Ctrl+C.
@@ -91,8 +91,24 @@ sudo systemctl enable --now bnt-miner
 journalctl -u bnt-miner -f        # watch it work
 ```
 
-Optional: the miner prints a HugePages hint for extra speed. HugePages reserve RAM permanently, so
-skip it on a machine that runs other things.
+### Getting more hashrate
+
+- **Stay on the latest seine.** Releases since v0.2.37 added a faster memory-streaming kernel; v0.2.42 is
+  about 45% faster on cloud VMs that report a plain "AMD EPYC" CPU. The pool flags old miners as `outdated`.
+- **HugePages** (the miner prints the exact number for your thread count, about 1024 per thread):
+  `sudo sysctl -w vm.nr_hugepages=<N>` and persist it in `/etc/sysctl.d/`. Reserve them right after a
+  reboot or after stopping the miner and dropping caches, or memory fragmentation leaves you with fewer
+  than asked. They pin that RAM permanently, so only do it on a machine with room to spare.
+- **Idle priority is very polite.** On a busy machine `CPUSchedulingPolicy=idle` gets only leftover CPU.
+  If mining is the point of the box, `Nice=5` with `CPUSchedulingPolicy=batch` gives it its fair share.
+- **The pool's hashrate tile is an estimate from shares**, so it reads low for the first hour after
+  every restart. The miner's own `rate=` line is the real number.
+
+### Keep the disk from filling up
+
+A full disk makes seine panic and systemd restart it forever, so mining silently stops. Rotate the log
+(`/etc/logrotate.d/`), cap the journal (`SystemMaxUse=300M`), and watch `df -h /`: headless browsers and
+other jobs on the same box are the usual culprits.
 
 ## Step 5: deploy your own tracker page (Vercel)
 
